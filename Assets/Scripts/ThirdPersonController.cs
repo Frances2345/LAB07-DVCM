@@ -1,3 +1,4 @@
+using System.Collections;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -20,6 +21,8 @@ public class ThirdPersonController : MonoBehaviour
     [FoldoutGroup("Controller")]
     public float moveSpeed = 5f;
     [FoldoutGroup("Controller")]
+    public float sprintMultiplier = 3f;
+    [FoldoutGroup("Controller")]
     public float rotationSpeed = 200f;
     [FoldoutGroup("Controller")]
     public float verticalVelocity = 0;
@@ -40,11 +43,12 @@ public class ThirdPersonController : MonoBehaviour
     private CinemachineImpulseSource source;
 
     [SerializeField] private Vector2 moveInput;
+    private bool isSprinting;
 
     public Transform weaponShootAnchor;
-
     public ParticleSystem walking;
     public ParticleSystem weaponShoot;
+    public ParticleSystem muzzleFlash;
 
     [FoldoutGroup("WallRun")]
     public float rayLenght;
@@ -81,8 +85,12 @@ public class ThirdPersonController : MonoBehaviour
         inputs.Player.Move.performed += ctx => moveInput = ctx.ReadValue<Vector2>();
         inputs.Player.Move.canceled += ctx => moveInput = Vector2.zero;
 
-
         inputs.Player.Jump.performed += OnJump;
+        inputs.Player.Dash.performed += OnDash;
+
+        inputs.Player.Sprint.started += ctx => isSprinting = true;
+        inputs.Player.Sprint.canceled += ctx => isSprinting = false;
+
         inputs.Player.Aim.started += ctx =>
             {
                 characterCamera.Priority = 0;
@@ -96,10 +104,6 @@ public class ThirdPersonController : MonoBehaviour
             aimMode = false;
         };
         inputs.Player.Attack.performed += OnAttack;
-
-        inputs.Player.Sprint.performed += OnDash;
-
-        // inputs.Player.Sprint.performed += OnDash;
     }
     void Start()
     {
@@ -123,21 +127,22 @@ public class ThirdPersonController : MonoBehaviour
         {
             if (moveInput != Vector2.zero)
             {
-                walking.Play();
-
+                if (!walking.isPlaying) walking.Play();
                 Quaternion targetQuaternion = Quaternion.LookRotation(cameraForwardDir);
                 //transform.rotation = targetQuaternion;
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetQuaternion, rotationSpeed * Time.deltaTime);
+            }
+            else
+            {
+                if (walking.isPlaying) walking.Stop();
             }
         }
         else
         {
             walking.Stop();
-
             Vector3 cameraForwardAimDir = characterCamera.transform.forward;
             //cameraForwardAimDir.y = 0;
             cameraForwardAimDir.Normalize();
-
             Quaternion targetQuaternion = Quaternion.LookRotation(cameraForwardAimDir);
 
             transform.rotation = Quaternion.Slerp(
@@ -145,21 +150,18 @@ public class ThirdPersonController : MonoBehaviour
                 targetQuaternion,
                 rotationSpeed * Time.deltaTime);
         }
-       
-        //>?
+
+        float currentspeed = isSprinting ? moveSpeed * sprintMultiplier : moveSpeed;
+
         Vector3 moveDir;
         if (!enableWallRun)
         {
-            moveDir = (cameraForwardDir * moveInput.y + transform.right * moveInput.x) * moveSpeed;
+            moveDir = (cameraForwardDir * moveInput.y + transform.right * moveInput.x) * currentspeed;
         }
         else
         {
-            moveDir = (crossResult * moveInput.y) * moveSpeed;
+            moveDir = (crossResult * moveInput.y) * currentspeed;
         }
-
-        float magnitud = Mathf.Abs(controller.velocity.magnitude);
-        // print(magnitud);
-        //animator.SetFloat("Speed", GetSpeed());
 
         verticalVelocity += Physics.gravity.y * Time.deltaTime;
 
@@ -193,19 +195,23 @@ public class ThirdPersonController : MonoBehaviour
         source.GenerateImpulse();
         verticalVelocity = jumpForce;
     }
-    public void OnSimpleMove()
+
+    /*public void OnSimpleMove()
     {
         transform.Rotate(Vector3.up * moveInput.x * rotationSpeed * Time.deltaTime);
         Vector3 moveDir = transform.forward * moveSpeed * moveInput.y;
         controller.SimpleMove(moveDir);
-    }
+    }*/
 
     private void OnAttack(InputAction.CallbackContext context)
     {
-        Debug.Log("Attack");
-        Physics.Raycast(weaponShootAnchor.position, characterAimCamera.transform.forward, out RaycastHit hit, 100);
+        if(muzzleFlash != null)
+        {
+            muzzleFlash.Play();
+        }
 
-        if (hit.collider != null)
+        Debug.Log("Attack");
+        if (Physics.Raycast(weaponShootAnchor.position, characterAimCamera.transform.forward, out RaycastHit hit, 100))
         {
             LineRenderer ray = Instantiate(RayPrefab, transform.position, Quaternion.identity);
             ray.gameObject.transform.position = weaponShootAnchor.position;
@@ -214,9 +220,18 @@ public class ThirdPersonController : MonoBehaviour
             ray.SetPosition(0, weaponShootAnchor.position);
             ray.SetPosition(1, hit.point);
 
-            weaponShoot.Play();
+            Destroy(ray.gameObject, 0.05f);
+
+            if (weaponShoot != null)
+            {
+                weaponShoot.transform.position = hit.point;
+                weaponShoot.Play();
+            }
         }
-        else { weaponShoot.Stop(); }
+        else
+        {
+            if (weaponShoot != null) weaponShoot.Stop();
+        }
 
     }
 
