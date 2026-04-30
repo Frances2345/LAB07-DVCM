@@ -27,16 +27,16 @@ public class CAnimatorController : MonoBehaviour
         inputs.Enable();
 
         inputs.Player.Move.performed += ctx =>
-                                                {
-                                                    animator.SetFloat("MoveX", ctx.ReadValue<Vector2>().x);
-                                                    animator.SetFloat("MoveY", ctx.ReadValue<Vector2>().y);
-                                                };
+        {
+            animator.SetFloat("MoveX", ctx.ReadValue<Vector2>().x);
+            animator.SetFloat("MoveY", ctx.ReadValue<Vector2>().y);
+        };
 
         inputs.Player.Move.canceled += ctx =>
-                                                {
-                                                    animator.SetFloat("MoveX", 0);
-                                                    animator.SetFloat("MoveY", 0);
-                                                };
+        {
+            animator.SetFloat("MoveX", 0);
+            animator.SetFloat("MoveY", 0);
+        };
 
 
         inputs.Player.Jump.started += ctx => animator.SetTrigger("OnJump");

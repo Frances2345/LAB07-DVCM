@@ -45,7 +45,6 @@ public class ThirdPersonController : MonoBehaviour
     [SerializeField] private Vector2 moveInput;
     private bool isSprinting;
 
-    public Transform weaponShootAnchor;
     public ParticleSystem walking;
     public ParticleSystem weaponShoot;
     public ParticleSystem muzzleFlash;
@@ -65,8 +64,13 @@ public class ThirdPersonController : MonoBehaviour
     Vector3 impactPoint;
     Vector3 crossResult;
 
-    public LineRenderer RayPrefab;
+    public LineRenderer Rayprefab;
+    public Transform WeaponShootAnchor;
 
+    [FoldoutGroup("FX")]
+    public ParticleSystem impactParticlesPrefab; 
+    [FoldoutGroup("FX")]
+    public float lineDuration = 0.05f;
     private void Awake()
     {
         inputs = new();
@@ -205,32 +209,35 @@ public class ThirdPersonController : MonoBehaviour
 
     private void OnAttack(InputAction.CallbackContext context)
     {
-        if(muzzleFlash != null)
+        if (muzzleFlash != null) muzzleFlash.Play(); 
+        Ray ray = new Ray(characterAimCamera.transform.position, characterAimCamera.transform.forward);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, 100))
         {
-            muzzleFlash.Play();
-        }
+            LineRenderer line = Instantiate(Rayprefab);
 
-        Debug.Log("Attack");
-        if (Physics.Raycast(weaponShootAnchor.position, characterAimCamera.transform.forward, out RaycastHit hit, 100))
-        {
-            LineRenderer ray = Instantiate(RayPrefab, transform.position, Quaternion.identity);
-            ray.gameObject.transform.position = weaponShootAnchor.position;
-
-            ray.positionCount = 2;
-            ray.SetPosition(0, weaponShootAnchor.position);
-            ray.SetPosition(1, hit.point);
-
-            Destroy(ray.gameObject, 0.05f);
-
-            if (weaponShoot != null)
-            {
-                weaponShoot.transform.position = hit.point;
-                weaponShoot.Play();
+            line.positionCount = 2;
+            line.SetPosition(0, WeaponShootAnchor.position);
+            line.SetPosition(1, hit.point);
+           
+            Destroy(line.gameObject, lineDuration);
+         
+            if (impactParticlesPrefab != null)
+            {               
+                ParticleSystem impact = Instantiate(
+                    impactParticlesPrefab,
+                    hit.point,
+                    Quaternion.LookRotation(hit.normal)
+                );
+                Destroy(impact.gameObject, 2f);
             }
         }
         else
-        {
-            if (weaponShoot != null) weaponShoot.Stop();
+        {          
+            LineRenderer line = Instantiate(Rayprefab);
+            line.SetPosition(0, WeaponShootAnchor.position);
+            line.SetPosition(1, ray.origin + ray.direction * 100);
+            Destroy(line.gameObject, lineDuration);
         }
 
     }
