@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using Sirenix.OdinInspector;
 
+
 public class ThirdPersonController : MonoBehaviour
 {
     [FoldoutGroup("References")]
@@ -66,6 +67,9 @@ public class ThirdPersonController : MonoBehaviour
 
     public LineRenderer Rayprefab;
     public Transform WeaponShootAnchor;
+    public GameObject CannonPrefab;
+    public Transform CannonSpawnPoint;
+
 
     [FoldoutGroup("FX")]
     public ParticleSystem impactParticlesPrefab; 
@@ -85,6 +89,7 @@ public class ThirdPersonController : MonoBehaviour
     private void OnEnable()
     {
         inputs.Enable();
+        inputs.Player.SpawnTurret.performed += SpawnCannon;
 
         inputs.Player.Move.performed += ctx => moveInput = ctx.ReadValue<Vector2>();
         inputs.Player.Move.canceled += ctx => moveInput = Vector2.zero;
@@ -108,6 +113,7 @@ public class ThirdPersonController : MonoBehaviour
             aimMode = false;
         };
         inputs.Player.Attack.performed += OnAttack;
+
     }
     void Start()
     {
@@ -118,6 +124,11 @@ public class ThirdPersonController : MonoBehaviour
         EnableWallRun();
         OnMove();
         //OnSimpleMove();
+    }
+
+    private void SpawnCannon(InputAction.CallbackContext context)
+    {
+        Instantiate(CannonPrefab, CannonSpawnPoint.position, CannonSpawnPoint.rotation);
     }
 
     public void OnMove()

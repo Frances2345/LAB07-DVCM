@@ -2,45 +2,61 @@ using UnityEngine;
 
 public class Cannon : MonoBehaviour
 {
-    public GameObject Enemy;
+    public float range = 10f;
+    public float rotationSpeed = 5f;
 
+    public GameObject bulletPrefab;
+    public Transform firePoint;
+    public Transform head;
 
-    public GameObject turretPrefab;
-    public bool aimMode;
-    public float rotationSpeed;
-    public Transform spawnCannon;
-
-    void Start()
-    {
-
-    }
+    private Transform target;
 
     void Update()
     {
+        FindTarget();
+
+        if (target == null) return;
+
+        Aim();
         Shoot();
-        SpawnCannon();
     }
 
-    public void Shoot()
+    void FindTarget() // encuentra al enemigo más cercano dentro del rango
     {
+        GameObject enemy = GameObject.FindGameObjectWithTag("Enemy");
 
-
-        Vector3 HeadDir = (Enemy.transform.position - transform.position);
-
-        Quaternion targetQuaternion = Quaternion.LookRotation(HeadDir);
-        transform.rotation = targetQuaternion;
-        turretPrefab.transform.rotation = Quaternion.Slerp(turretPrefab.transform.rotation, targetQuaternion, rotationSpeed * Time.deltaTime);
-
-
-
-
-    }
-
-    public void SpawnCannon()
-    {
-        if (Input.GetKeyDown(KeyCode.T))
+        if (enemy == null)
         {
-            Instantiate(turretPrefab, spawnCannon.position, spawnCannon.rotation);
+            target = null;
+            return;
         }
+
+        float dist = Vector3.Distance(transform.position, enemy.transform.position);
+
+        if (dist <= range)
+            target = enemy.transform;
+        else
+            target = null;
+    }
+
+    void Aim() // gira a torre para mirar 
+    {
+        Vector3 dir = target.position - transform.position;
+        dir.y = 0f;
+
+        Quaternion rot = Quaternion.LookRotation(dir);
+        head.rotation = Quaternion.Slerp(head.rotation,rot,rotationSpeed * Time.deltaTime);
+
+    }
+
+    void Shoot() // dispara projétil
+    {
+        Instantiate(bulletPrefab, firePoint.position, firePoint.rotation);
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, range);
     }
 }
